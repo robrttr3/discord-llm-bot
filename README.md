@@ -58,7 +58,7 @@ An additional **100-request UTC-day cap** and **one simultaneous AI request** ar
 6. Common identity and creator questions, help and reset commands are handled locally without an AI request.
 7. The context builder gathers permitted nearby messages and a same-channel referenced message. Every item is moderated, bounded and marked as untrusted data. Attachment files, embeds and linked pages are never downloaded.
 8. The provider adapter sends the immutable identity/rules as system instructions, separate from a JSON object containing user data. For Gemini, hate and harassment safety settings remain enabled.
-9. Output checks reject configured slurs and common wrong-identity claims, remove emoji/emoticons and em dashes, and apply Discord's length bound. A rejected response can be regenerated once, without repeating the rejected text. A second failure yields a checked neutral fallback.
+9. Output checks reject configured slurs and common wrong-identity claims, remove emoji/emoticons and em dashes, and apply Discord's length bound at the last complete sentence when possible. A rejected response can be regenerated once, without repeating the rejected text. A second failure yields a checked neutral fallback.
 10. The single `SafeSender` path checks even errors, quota notices and fallback messages immediately before sending. Mentions and link embeds are disabled. If operator filters also prohibit the fallback, the bot stays silent.
 
 History is **RAM only**, with no database or chat logs. Defaults: eight nearby messages, ten-minute context window, 6,000 nearby-context characters, and at most 100 active channel buffers. The current message and optional referenced message are separately bounded at 3,000 characters each. Expired text is excluded immediately on use and pruned from idle buffers at most 30 seconds later. Discord.py's extra message cache is disabled. A provider request temporarily holds its bounded payload until that request finishes.
@@ -240,6 +240,9 @@ Stop with **Ctrl+C**. Run the same command to restart. Identity and configuratio
 
 Stop Orion, edit `settings.toml`, save, run `--check-config`, and restart. This file controls IDs, `reply_to_mentions`/`reply_to_replies`, personality, context length/expiry, cooldowns, input/output size, API timeout and request budget. `history_messages=0` disables nearby-history collection; a directly referenced message can still be used. Identity facts remain in `identity.py` and are not ordinary personality options.
 
+`max_response_characters` is both an instruction to the model and a final safety limit. If a model still exceeds it, Orion keeps the last complete sentence that fits; a response with no completed sentence is shortened with an ellipsis.
+`max_output_tokens` is the provider's generation budget. Keep it high enough for the model to finish, such as 256 or 512, and use `max_response_characters` to control the visible reply length. If a provider reports that it exhausted the token budget, Orion removes the unfinished trailing fragment.
+
 For an intentional provider change, set `provider`, `model`, and (for OpenAI-compatible or Ollama) `base_url`. Use `ORION_AI_KEY` for the selected hosted provider. Verify its current exact model ID and free access first. An OpenAI-compatible service needs a `/v1`-style base URL without the `/chat/completions` suffix; the adapter appends that suffix. Ollama uses `http://127.0.0.1:11434` with `provider="ollama"` and an already-downloaded model name from your local model list. No AI key is transmitted to Ollama. Never point a hosted key at an untrusted endpoint. No model downloads, local GPU requirements or provider changes happen automatically.
 
 ### 11. Keeping Orion online when your Windows PC is off
@@ -276,7 +279,7 @@ For live tests, run Orion and allow 15 seconds between attempts from the same us
 | Ask for emoji, a custom Discord emoji, an emoticon or an em dash | Prompt tells the model not to use them; tests verify removal even when a simulated model ignores that instruction. |
 | Generated prohibited term or wrong creator | Tests verify one safe regeneration attempt, then checked neutral fallback. Rejected text is not reused or logged. |
 | Empty or malformed AI reply | Unavailability notice, then short circuit pause. No fake AI answer. |
-| Very long input | Shorten-message notice, no AI call. Large generated text is safely capped. |
+| Very long input | Shorten-message notice, no AI call. Large generated text is capped at the last complete sentence when possible. |
 | Simulated API timeout/5xx | One failed request, 60-second pause; notices throttled separately. |
 | Simulated 429/exhausted quota | Quota notice, no model substitution, API calls paused. Repeated calls during the pause do not issue HTTP requests. |
 | Missing AI key | Startup/diagnostic error naming the missing variable, no secret value. |

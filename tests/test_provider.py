@@ -42,6 +42,23 @@ class ProviderTests(unittest.IsolatedAsyncioTestCase):
         provider = self.make_provider(handler, replace(Settings(), provider="openai", model="openai/gpt-oss-120b"))
         self.assertEqual(await provider.generate("s", "u"), "Hello.")
 
+    async def test_provider_token_limits_drop_incomplete_tail(self):
+        cases = (
+            (Settings(), {"candidates": [{"finishReason": "MAX_TOKENS", "content": {
+                "parts": [{"text": "A complete sentence. The Soviet"}]}}]}),
+            (replace(Settings(), provider="openai", model="openai/gpt-oss-120b"),
+             {"choices": [{"finish_reason": "length", "message": {
+                 "content": "A complete sentence. The Soviet"}}]}),
+            (replace(Settings(), provider="ollama", model="test", base_url="http://127.0.0.1:11434"),
+             {"done_reason": "length", "message": {
+                 "content": "A complete sentence. The Soviet"}}),
+        )
+        for settings, response_body in cases:
+            with self.subTest(provider=settings.provider):
+                provider = self.make_provider(
+                    lambda request, body=response_body: httpx.Response(200, json=body), settings)
+                self.assertEqual(await provider.generate("s", "u"), "A complete sentence.")
+
     async def test_gemini_does_not_guess_model_specific_thinking_options(self):
         for model in ("gemini-3.8-flash", "gemini-3.5-flash-lite", "gemini-3.1-pro-preview", "gemini-2.5-pro"):
             with self.subTest(model=model):

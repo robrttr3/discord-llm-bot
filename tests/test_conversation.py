@@ -46,6 +46,7 @@ class ConversationTests(unittest.IsolatedAsyncioTestCase):
     async def test_normal_mention(self):
         self.assertEqual(await self.engine.handle(self.message()), "That makes sense.")
         self.assertEqual(len(self.provider.calls), 1)
+        self.assertIn("within 1800 characters", self.provider.calls[0][0])
 
     async def test_reply_to_self_and_reference_context(self):
         reference = self.message("A prior point.", is_bot=True, is_self=True, mentioned=False)

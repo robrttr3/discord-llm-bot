@@ -211,7 +211,8 @@ class Conversation:
             payload = json.dumps({"nearby_messages": list(reversed(recent)),
                                   "replying_to": reference_text,
                                   "current_message": message.text}, ensure_ascii=False)
-            system = system_prompt(self.settings.personality)
+            system = system_prompt(self.settings.personality,
+                                   self.settings.max_response_characters)
             for attempt in range(2):
                 try:
                     # Rejects quota/outage calls before issuing another HTTP request.

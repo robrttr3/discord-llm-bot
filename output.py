@@ -19,6 +19,7 @@ _KAOMOJI = re.compile(
     r"[（(](?=[^()\n]{1,24}[)）])(?=[^()\n]*[°ಠಥ◕•])"
     r"[^()\nA-Za-z0-9]{1,24}[)）][╯づっノつ]*"
 )
+_SENTENCE_END = re.compile(r"[.!?](?:[\"')\]]{0,3})(?=\s|$)")
 
 
 def strip_prohibited(text: str) -> str:
@@ -34,6 +35,33 @@ def strip_prohibited(text: str) -> str:
     return text.strip()
 
 
+def _limit_at_sentence(text: str, max_length: int) -> str:
+    """Fit UTF-16 limit, preferring a complete sentence over a partial one."""
+    encoded = text.encode("utf-16-le")
+    if len(encoded) <= max_length * 2:
+        return text
+    clipped = encoded[:max_length * 2].decode("utf-16-le", errors="ignore").rstrip()
+    endings = list(_SENTENCE_END.finditer(clipped))
+    if endings:
+        return clipped[:endings[-1].end()].rstrip()
+    # If the model produced no complete sentence, visibly mark the hard limit
+    # instead of presenting a cut-off fragment as a finished response.
+    room = max(1, max_length - 3)
+    clipped = encoded[:room * 2].decode("utf-16-le", errors="ignore").rstrip()
+    if " " in clipped:
+        clipped = clipped.rsplit(None, 1)[0]
+    return clipped.rstrip(" ,;:") + "..."
+
+
+def finish_limited_output(text: str) -> str:
+    """Remove the unfinished tail reported by a provider token limit."""
+    text = text.rstrip()
+    endings = list(_SENTENCE_END.finditer(text))
+    if endings:
+        return text[:endings[-1].end()].rstrip()
+    return text.rstrip(" ,;:") + "..."
+
+
 def validate_output(text, moderator, max_length=1800) -> str | None:
     """None means reject. Callers may retry once or validate a fixed fallback."""
     if not isinstance(text, str) or not text.strip() or len(text) > 100000:
@@ -44,7 +72,7 @@ def validate_output(text, moderator, max_length=1800) -> str | None:
     if not text or identity_violation(text) or moderator.blocked(text):
         return None
     # Discord's 2000-character bound is conservatively measured in UTF-16 units.
-    text = text.encode("utf-16-le")[:max_length * 2].decode("utf-16-le", errors="ignore").rstrip()
+    text = _limit_at_sentence(text, max_length)
     if not text or moderator.blocked(text) or identity_violation(text):
         return None
     return text

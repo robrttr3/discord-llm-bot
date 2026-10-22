@@ -8,6 +8,8 @@ from urllib.parse import quote
 
 import httpx
 
+from output import finish_limited_output
+
 
 class ProviderError(Exception):
     def __init__(self, kind: str):
@@ -172,6 +174,7 @@ class AIProvider:
                 raise ProviderError("outage")
             try:
                 data = response.json()
+                length_limited = False
                 if s.provider == "gemini":
                     candidates = data.get("candidates", [])
                     if data.get("promptFeedback", {}).get("blockReason"):
@@ -179,17 +182,20 @@ class AIProvider:
                     candidate = candidates[0] if candidates else {}
                     if candidate.get("finishReason") in ("SAFETY", "PROHIBITED_CONTENT", "BLOCKLIST"):
                         raise ProviderError("safety")
+                    length_limited = candidate.get("finishReason") == "MAX_TOKENS"
                     result = "".join(
                         part.get("text", "") for part in candidate.get("content", {}).get("parts", [])
                         if not part.get("thought")
                     )
                 elif s.provider == "openai":
+                    length_limited = data["choices"][0].get("finish_reason") == "length"
                     result = data["choices"][0]["message"]["content"]
                 else:
+                    length_limited = data.get("done_reason") == "length"
                     result = data["message"]["content"]
                 if not isinstance(result, str) or not result.strip():
                     raise ValueError
-                return result
+                return finish_limited_output(result) if length_limited else result
             except (ValueError, KeyError, TypeError, IndexError, AttributeError):
                 self._pause("empty", 60)
                 raise ProviderError("empty") from None

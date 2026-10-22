@@ -79,9 +79,15 @@ class RuleTests(unittest.TestCase):
     def test_discord_length_and_idempotence(self):
         value = validate_output("A" * 6000, self.moderator, 1800)
         self.assertEqual(len(value), 1800)
+        self.assertTrue(value.endswith("..."))
         self.assertEqual(validate_output(value, self.moderator), value)
         value = validate_output("\U00010400" * 2000, self.moderator, 1800)
         self.assertLessEqual(len(value.encode("utf-16-le")), 3600)
+
+    def test_truncation_drops_incomplete_trailing_sentence(self):
+        text = "A complete first sentence. The Soviet response continued for much longer."
+        self.assertEqual(validate_output(text, self.moderator, 40),
+                         "A complete first sentence.")
 
     def test_moderation_normalization(self):
         for text in ("blockedexample", "B.L.O.C.K.E.D.E.X.A.M.P.L.E", "b l o c k e d e x a m p l e",

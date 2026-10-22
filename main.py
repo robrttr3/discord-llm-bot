@@ -145,7 +145,8 @@ async def run(args):
     provider = AIProvider(settings, key)
     try:
         if args.check_ai:
-            text = await provider.generate(system_prompt(settings.personality),
+            text = await provider.generate(system_prompt(
+                settings.personality, settings.max_response_characters),
                                            '{"current_message":"Say hello briefly."}')
             valid = validate_output(text, moderator, settings.max_response_characters)
             if not valid:
