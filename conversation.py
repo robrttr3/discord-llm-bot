@@ -3,11 +3,47 @@ import asyncio
 from collections import OrderedDict
 from dataclasses import dataclass
 import json
+import re
 import time
 
 from ai_provider import ProviderError
 from identity import identity_reply, system_prompt
 from output import FALLBACK, validate_output
+
+
+REPEAT_REFUSAL = "I won't repeat or output requested phrases."
+
+_REPEAT_REQUESTS = (
+    re.compile(r"^\s*(?:(?:please|kindly)\s+)*(?:say|repeat|echo|parrot)\b", re.IGNORECASE),
+    re.compile(
+        r"\b(?:can|could|would|will|may|might)\s+(?:you|orion|the\s+bot)\s+"
+        r"(?:(?:please|kindly)\s+)?(?:say|repeat|echo|parrot)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\b(?:i\s+(?:want|need)\s+you|tell\s+(?:orion|the\s+bot)|"
+        r"(?:make|have)\s+(?:orion|the\s+bot))\s+to\s+"
+        r"(?:say|repeat|echo|parrot)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(r"\brepeat\s+after\s+me\b", re.IGNORECASE),
+    re.compile(
+        r"\b(?:reply|respond|answer)\s+with\s+(?:"
+        r"(?:only|exactly|just)\b|this\b|that\b|the\s+(?:word|phrase)\b|[\"'])",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\byour\s+next\s+(?:message|reply|response)\s+"
+        r"(?:must|should|has\s+to|needs\s+to)\s+(?:be|say|contain)\b",
+        re.IGNORECASE,
+    ),
+)
+
+
+def forced_phrase_request(text: str) -> bool:
+    """Recognize common attempts to dictate Orion's exact words."""
+    normalized = text.casefold().replace("’", "'").replace("“", '"').replace("”", '"')
+    return any(pattern.search(normalized) for pattern in _REPEAT_REQUESTS)
 
 
 @dataclass(frozen=True)
@@ -143,6 +179,8 @@ class Conversation:
             return self._safe("I've cleared this channel's conversation context.")
         if command == "help":
             return self._safe("Mention me or reply to one of my messages. Say reset with a mention to clear this channel's context.")
+        if forced_phrase_request(message.text):
+            return self._safe(REPEAT_REFUSAL)
         local = identity_reply(message.text)
         if local:
             return self._safe(local)

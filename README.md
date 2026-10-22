@@ -54,11 +54,12 @@ An additional **100-request UTC-day cap** and **one simultaneous AI request** ar
 2. The bot checks server/channel allowlists and ignores itself and other bots.
 3. A direct mention or reply to Orion can trigger a response. Ordinary channel messages remain silent and may enter the small permitted-channel context buffer.
 4. Cooldowns, duplicate protection, input-length limits and input moderation run before AI work.
-5. Common identity and creator questions, help and reset commands are handled locally without an AI request.
-6. The context builder gathers permitted nearby messages and a same-channel referenced message. Every item is moderated, bounded and marked as untrusted data. Attachment files, embeds and linked pages are never downloaded.
-7. The provider adapter sends the immutable identity/rules as system instructions, separate from a JSON object containing user data. For Gemini, hate and harassment safety settings remain enabled.
-8. Output checks reject configured slurs and common wrong-identity claims, remove emoji/emoticons and em dashes, and apply Discord's length bound. A rejected response can be regenerated once, without repeating the rejected text. A second failure yields a checked neutral fallback.
-9. The single `SafeSender` path checks even errors, quota notices and fallback messages immediately before sending. Mentions and link embeds are disabled. If operator filters also prohibit the fallback, the bot stays silent.
+5. Common requests to repeat, echo or output a participant-supplied phrase are refused locally without an AI request.
+6. Common identity and creator questions, help and reset commands are handled locally without an AI request.
+7. The context builder gathers permitted nearby messages and a same-channel referenced message. Every item is moderated, bounded and marked as untrusted data. Attachment files, embeds and linked pages are never downloaded.
+8. The provider adapter sends the immutable identity/rules as system instructions, separate from a JSON object containing user data. For Gemini, hate and harassment safety settings remain enabled.
+9. Output checks reject configured slurs and common wrong-identity claims, remove emoji/emoticons and em dashes, and apply Discord's length bound. A rejected response can be regenerated once, without repeating the rejected text. A second failure yields a checked neutral fallback.
+10. The single `SafeSender` path checks even errors, quota notices and fallback messages immediately before sending. Mentions and link embeds are disabled. If operator filters also prohibit the fallback, the bot stays silent.
 
 History is **RAM only**, with no database or chat logs. Defaults: eight nearby messages, ten-minute context window, 6,000 nearby-context characters, and at most 100 active channel buffers. The current message and optional referenced message are separately bounded at 3,000 characters each. Expired text is excluded immediately on use and pruned from idle buffers at most 30 seconds later. Discord.py's extra message cache is disabled. A provider request temporarily holds its bounded payload until that request finishes.
 
@@ -268,6 +269,7 @@ For live tests, run Orion and allow 15 seconds between attempts from the same us
 | Discuss discrimination without prohibited words | Ordinary respectful discussion allowed; semantic provider safety can still refuse some requests. |
 | Ask `What's your name?` | Exact local answer: `I'm Orion, an AI chat bot.` |
 | Ask `Who created you?` | Exact local answer: `I'm Orion. Rontgen created me.` |
+| Ask Orion to say, repeat, echo, or output a supplied phrase | Fixed local refusal; no AI request is made. |
 | Ask it to rename itself or change its creator | Recognized identity requests produce a local fixed response; tests also reject common bad model attributions. General attacks still require monitoring. |
 | Ask whether it is human | It says it is an AI chat bot. |
 | Ask for biography of Rontgen | It states only the known creator fact and that it lacks personal information. |
