@@ -42,6 +42,16 @@ class ProviderTests(unittest.IsolatedAsyncioTestCase):
         provider = self.make_provider(handler, replace(Settings(), provider="openai", model="openai/gpt-oss-120b"))
         self.assertEqual(await provider.generate("s", "u"), "Hello.")
 
+    async def test_gemini_does_not_guess_model_specific_thinking_options(self):
+        for model in ("gemini-3.8-flash", "gemini-3.5-flash-lite", "gemini-3.1-pro-preview", "gemini-2.5-pro"):
+            with self.subTest(model=model):
+                def handler(request):
+                    generation = json.loads(request.content)["generationConfig"]
+                    self.assertEqual(generation, {"maxOutputTokens": Settings().max_output_tokens})
+                    return httpx.Response(200, json={"candidates": [{"content": {"parts": [{"text": "Hello."}]}}]})
+                provider = self.make_provider(handler, replace(Settings(), model=model))
+                self.assertEqual(await provider.generate("s", "u"), "Hello.")
+
     async def test_ollama_no_key_transmitted(self):
         def handler(request):
             self.assertNotIn("authorization", request.headers)
@@ -92,6 +102,33 @@ class ProviderTests(unittest.IsolatedAsyncioTestCase):
                 await provider.generate("s", "u")
             self.assertEqual(error.exception.kind, "outage")
         self.assertEqual(len(calls), 1)
+
+    async def test_bad_request_hints_do_not_log_provider_text_or_keys(self):
+        cases = [
+            ({"status": "INVALID_ARGUMENT", "message": "secret-marker thinkingLevel unsupported"}, "configuration", "thinking option"),
+            ({"status": "INVALID_ARGUMENT", "message": "secret-marker", "details": [{"reason": "API_KEY_INVALID"}]}, "auth", "rejected the API key"),
+            ({"status": "FAILED_PRECONDITION", "message": "secret-marker"}, "configuration", "account prerequisite"),
+            ({"message": "secret-marker maxOutputTokens invalid"}, "configuration", "output token"),
+            ({"message": "secret-marker User location is not supported"}, "configuration", "location is unsupported"),
+            ({"message": "secret-marker unknown problem"}, "configuration", "status alone"),
+        ]
+        for body, kind, hint in cases:
+            provider = self.make_provider(lambda request: httpx.Response(400, json={"error": body}))
+            with self.assertLogs("orion", level="WARNING") as logs:
+                with self.assertRaises(ProviderError) as error:
+                    await provider.generate("s", "u")
+            self.assertEqual(error.exception.kind, kind)
+            combined = " ".join(logs.output)
+            self.assertIn(hint, combined)
+            self.assertNotIn("secret-marker", combined)
+            self.assertNotIn("fake-test-key", combined)
+
+    async def test_malformed_bad_request_body_has_safe_generic_hint(self):
+        for body in ([], {"error": []}, {"error": {"details": None}}):
+            response = httpx.Response(400, json=body)
+            kind, hint = AIProvider._gemini_bad_request(response)
+            self.assertEqual(kind, "configuration")
+            self.assertIn("status alone", hint)
 
     async def test_daily_limit_and_next_day(self):
         def handler(request):

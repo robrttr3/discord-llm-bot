@@ -583,6 +583,31 @@ class AIProvider:
         # Conservative backoff, even if a service returns a zero or negative delay.
         return max(60, min(seconds, 86400))
 
+    @staticmethod
+    def _gemini_bad_request(response):
+        """Classify known error signals; never log Google's free-form response."""
+        try:
+            error = response.json().get("error", {})
+            details = error.get("details", [])
+            reasons = {item.get("reason") for item in details if isinstance(item, dict)
+                       and isinstance(item.get("reason"), str)}
+            message = error.get("message", "")
+            message = message.casefold() if isinstance(message, str) else ""
+            status = error.get("status", "")
+        except (ValueError, TypeError, AttributeError):
+            reasons, message, status = set(), "", ""
+        if "API_KEY_INVALID" in reasons or "api key not valid" in message or "api key expired" in message:
+            return "auth", "Google rejected the API key. Check ORION_AI_KEY privately and restart after correcting it."
+        if "user location is not supported" in message:
+            return "configuration", "Google reports this location is unsupported. Check Gemini API regional eligibility."
+        if any(field in message for field in ("thinkinglevel", "thinking_level", "thinkingconfig", "thinking_config")):
+            return "configuration", "Google rejected a thinking option. Use the updated Orion adapter, which omits guessed thinking settings."
+        if any(field in message for field in ("maxoutputtokens", "max_output_tokens")):
+            return "configuration", "Google rejected the output token setting. Check max_output_tokens against this model's documented limits."
+        if status == "FAILED_PRECONDITION":
+            return "configuration", "Google reports an unmet account prerequisite. Check project, region and free-tier eligibility in AI Studio; do not enable billing just to retry."
+        return "configuration", "Google rejected the request (HTTP 400). The status alone does not identify the cause; inspect the detailed error in AI Studio."
+
     async def generate(self, system: str, conversation: str) -> str:
         if self.lock.locked():
             raise ProviderError("busy")
@@ -593,8 +618,8 @@ class AIProvider:
                 url = "https://generativelanguage.googleapis.com/v1beta/models/" + quote(s.model, safe="-._") + ":generateContent"
                 headers = {"x-goog-api-key": self.key}
                 generation = {"maxOutputTokens": s.max_output_tokens}
-                if s.model.startswith("gemini-3"):
-                    generation["thinkingConfig"] = {"thinkingLevel": "minimal"}
+                # Thinking options differ between models. Use the model's defaults
+                # rather than infer supported values from its name prefix.
                 body = {
                     "systemInstruction": {"parts": [{"text": system}]},
                     "contents": [{"role": "user", "parts": [{"text": conversation}]}],
@@ -636,6 +661,11 @@ class AIProvider:
             if status in (401, 403):
                 self._pause("auth", 3600)
                 raise ProviderError("auth")
+            if status == 400 and s.provider == "gemini":
+                kind, hint = self._gemini_bad_request(response)
+                logging.getLogger("orion").warning("%s", hint)
+                self._pause(kind, 3600)
+                raise ProviderError(kind)
             if status in (400, 404, 422):
                 self._pause("configuration", 3600)
                 raise ProviderError("configuration")
@@ -1141,6 +1171,16 @@ class ProviderTests(unittest.IsolatedAsyncioTestCase):
         provider = self.make_provider(handler, replace(Settings(), provider="openai", model="openai/gpt-oss-120b"))
         self.assertEqual(await provider.generate("s", "u"), "Hello.")
 
+    async def test_gemini_does_not_guess_model_specific_thinking_options(self):
+        for model in ("gemini-3.8-flash", "gemini-3.5-flash-lite", "gemini-3.1-pro-preview", "gemini-2.5-pro"):
+            with self.subTest(model=model):
+                def handler(request):
+                    generation = json.loads(request.content)["generationConfig"]
+                    self.assertEqual(generation, {"maxOutputTokens": Settings().max_output_tokens})
+                    return httpx.Response(200, json={"candidates": [{"content": {"parts": [{"text": "Hello."}]}}]})
+                provider = self.make_provider(handler, replace(Settings(), model=model))
+                self.assertEqual(await provider.generate("s", "u"), "Hello.")
+
     async def test_ollama_no_key_transmitted(self):
         def handler(request):
             self.assertNotIn("authorization", request.headers)
@@ -1191,6 +1231,33 @@ class ProviderTests(unittest.IsolatedAsyncioTestCase):
                 await provider.generate("s", "u")
             self.assertEqual(error.exception.kind, "outage")
         self.assertEqual(len(calls), 1)
+
+    async def test_bad_request_hints_do_not_log_provider_text_or_keys(self):
+        cases = [
+            ({"status": "INVALID_ARGUMENT", "message": "secret-marker thinkingLevel unsupported"}, "configuration", "thinking option"),
+            ({"status": "INVALID_ARGUMENT", "message": "secret-marker", "details": [{"reason": "API_KEY_INVALID"}]}, "auth", "rejected the API key"),
+            ({"status": "FAILED_PRECONDITION", "message": "secret-marker"}, "configuration", "account prerequisite"),
+            ({"message": "secret-marker maxOutputTokens invalid"}, "configuration", "output token"),
+            ({"message": "secret-marker User location is not supported"}, "configuration", "location is unsupported"),
+            ({"message": "secret-marker unknown problem"}, "configuration", "status alone"),
+        ]
+        for body, kind, hint in cases:
+            provider = self.make_provider(lambda request: httpx.Response(400, json={"error": body}))
+            with self.assertLogs("orion", level="WARNING") as logs:
+                with self.assertRaises(ProviderError) as error:
+                    await provider.generate("s", "u")
+            self.assertEqual(error.exception.kind, kind)
+            combined = " ".join(logs.output)
+            self.assertIn(hint, combined)
+            self.assertNotIn("secret-marker", combined)
+            self.assertNotIn("fake-test-key", combined)
+
+    async def test_malformed_bad_request_body_has_safe_generic_hint(self):
+        for body in ([], {"error": []}, {"error": {"details": None}}):
+            response = httpx.Response(400, json=body)
+            kind, hint = AIProvider._gemini_bad_request(response)
+            self.assertEqual(kind, "configuration")
+            self.assertIn("status alone", hint)
 
     async def test_daily_limit_and_next_day(self):
         def handler(request):
@@ -1883,6 +1950,7 @@ You do not need to deliberately break real keys, exhaust your account's quota, o
 | Reference/history unavailable | Grant Read Message History and View Channel; deleted/unavailable references cannot be recovered. Context is bounded and excludes pre-start/pre-reset text. |
 | `auth` / operator-attention notice | Key invalid, project/region access denied, or proxy rejected access. Check account settings and endpoint connectivity; do not blindly create more keys. Restart only after correcting the prerequisite to clear the local pause. |
 | `configuration` | Verify exact model name, API availability, endpoint format and support for the model's generation options. A missing model or unsupported thinking option needs a configuration/provider update. No weaker model is auto-selected. |
+| `400 Bad Request` | This is a rejected request, not a quota response. Update Orion: it no longer guesses `thinkingLevel="minimal"` support from a Gemini model's name. Run `--check-ai` after restarting; the updated adapter prints fixed, credential-safe hints for recognized key, region, account, thinking and output-token errors. It never prints Google's raw error body. If the hint is generic, share the detailed AI Studio error with credentials and personal content removed. A 400 alone does not establish the cause. Restart after correcting the issue to clear Orion's one-hour pause. |
 | `quota` | Check AI Studio usage limits and free allocation. Wait for the documented account-specific reset. Local notices are throttled; repeated mentions do not clear the pause. |
 | `outage` | Check Internet/proxy/firewall and service status; requests time out after the configured total deadline. Wait at least 60 seconds. Do not disable TLS verification. |
 | `empty` | Provider returned no usable text or an unexpected response shape; it could have hit a token/thinking limit. Check the model's current output settings and diagnostics before changing the token cap. |
@@ -1922,7 +1990,7 @@ Executed on 22 October 2026 in the supplied Linux cloud workspace, using Python 
 - Created the repository-local `.venv` and installed pinned packages from PyPI with TLS verification enabled.
 - Re-ran installation from `requirements.lock`; every required version was already installed. Dependency checking reported `No broken requirements found.`
 - Executed the complete reusable cloud install script, including the real automated test command.
-- `python -m unittest discover -s tests -v`: **64 tests passed**. This includes all emoji sequences in the installed emoji database in one test, common emoticons, moderation normalization, identity, safe sending, triggers, references, context expiry/reset, cooldowns, provider payloads, malformed/empty output, timeout, authentication errors, 429/quota pauses, and daily limits.
+- `python -m unittest discover -s tests -q`: **67 tests passed** after the Gemini request compatibility and diagnostic update (the initial project had 64). This includes all emoji sequences in the installed emoji database in one test, common emoticons, moderation normalization, identity, safe sending, triggers, references, context expiry/reset, cooldowns, provider payloads, malformed/empty output, timeout, authentication errors, 429/quota pauses, and daily limits. New tests check that different Gemini model names do not inject guessed thinking settings, and that recognized 400 errors produce fixed diagnostic hints without logging keys or arbitrary provider text. Malformed error bodies use a safe generic hint. The cause of the operator's live 400 remains unconfirmed without its detailed error or a live retest.
 - Instantiated the official `discord.Client` subclass and invoked its event handlers with simulated Discord messages. Verified reference fetching, mention removal, reply triggering, safe output, disallowed-channel silence, bot-loop prevention, minimum intents, disabled message cache, and cleanup-task lifecycle.
 - Ran `main.py --config /tmp/orion-smoke.toml --check-config` with a temporary configuration containing harmless synthetic server/channel IDs. It printed `Configuration OK. Allowlists and output rules loaded. Credentials not tested.` No real channel was accessed.
 - Confirmed shipped empty allowlists fail closed with a local configuration error. No user's real IDs were guessed or written into settings.

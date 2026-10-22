@@ -62,6 +62,31 @@ class AIProvider:
         # Conservative backoff, even if a service returns a zero or negative delay.
         return max(60, min(seconds, 86400))
 
+    @staticmethod
+    def _gemini_bad_request(response):
+        """Classify known error signals; never log Google's free-form response."""
+        try:
+            error = response.json().get("error", {})
+            details = error.get("details", [])
+            reasons = {item.get("reason") for item in details if isinstance(item, dict)
+                       and isinstance(item.get("reason"), str)}
+            message = error.get("message", "")
+            message = message.casefold() if isinstance(message, str) else ""
+            status = error.get("status", "")
+        except (ValueError, TypeError, AttributeError):
+            reasons, message, status = set(), "", ""
+        if "API_KEY_INVALID" in reasons or "api key not valid" in message or "api key expired" in message:
+            return "auth", "Google rejected the API key. Check ORION_AI_KEY privately and restart after correcting it."
+        if "user location is not supported" in message:
+            return "configuration", "Google reports this location is unsupported. Check Gemini API regional eligibility."
+        if any(field in message for field in ("thinkinglevel", "thinking_level", "thinkingconfig", "thinking_config")):
+            return "configuration", "Google rejected a thinking option. Use the updated Orion adapter, which omits guessed thinking settings."
+        if any(field in message for field in ("maxoutputtokens", "max_output_tokens")):
+            return "configuration", "Google rejected the output token setting. Check max_output_tokens against this model's documented limits."
+        if status == "FAILED_PRECONDITION":
+            return "configuration", "Google reports an unmet account prerequisite. Check project, region and free-tier eligibility in AI Studio; do not enable billing just to retry."
+        return "configuration", "Google rejected the request (HTTP 400). The status alone does not identify the cause; inspect the detailed error in AI Studio."
+
     async def generate(self, system: str, conversation: str) -> str:
         if self.lock.locked():
             raise ProviderError("busy")
@@ -72,8 +97,8 @@ class AIProvider:
                 url = "https://generativelanguage.googleapis.com/v1beta/models/" + quote(s.model, safe="-._") + ":generateContent"
                 headers = {"x-goog-api-key": self.key}
                 generation = {"maxOutputTokens": s.max_output_tokens}
-                if s.model.startswith("gemini-3"):
-                    generation["thinkingConfig"] = {"thinkingLevel": "minimal"}
+                # Thinking options differ between models. Use the model's defaults
+                # rather than infer supported values from its name prefix.
                 body = {
                     "systemInstruction": {"parts": [{"text": system}]},
                     "contents": [{"role": "user", "parts": [{"text": conversation}]}],
@@ -115,6 +140,11 @@ class AIProvider:
             if status in (401, 403):
                 self._pause("auth", 3600)
                 raise ProviderError("auth")
+            if status == 400 and s.provider == "gemini":
+                kind, hint = self._gemini_bad_request(response)
+                logging.getLogger("orion").warning("%s", hint)
+                self._pause(kind, 3600)
+                raise ProviderError(kind)
             if status in (400, 404, 422):
                 self._pause("configuration", 3600)
                 raise ProviderError("configuration")
