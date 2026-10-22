@@ -130,7 +130,23 @@ class AIProvider:
             try:
                 async with asyncio.timeout(s.request_timeout_seconds):
                     response = await self.client.post(url, headers=headers, json=body)
-            except (TimeoutError, httpx.TimeoutException, httpx.TransportError):
+            except (TimeoutError, httpx.TimeoutException):
+                logging.getLogger("orion").warning(
+                    "AI request timed out (configured total limit: %s seconds). If this repeats, try request_timeout_seconds = 120 in settings.toml.",
+                    s.request_timeout_seconds,
+                )
+                self._pause("outage", 60)
+                raise ProviderError("outage") from None
+            except httpx.ProxyError:
+                logging.getLogger("orion").warning(
+                    "AI proxy connection failed. Check the configured proxy and its access to the AI provider; no proxy details were logged."
+                )
+                self._pause("outage", 60)
+                raise ProviderError("outage") from None
+            except httpx.TransportError:
+                logging.getLogger("orion").warning(
+                    "AI network connection failed. Check Internet, DNS, trusted certificates, firewall and proxy access; no exception details were logged."
+                )
                 self._pause("outage", 60)
                 raise ProviderError("outage") from None
             status = response.status_code
@@ -149,6 +165,9 @@ class AIProvider:
                 self._pause("configuration", 3600)
                 raise ProviderError("configuration")
             if not 200 <= status < 300:
+                logging.getLogger("orion").warning(
+                    "AI endpoint returned HTTP %s. Check provider status and network/proxy availability; no response body was logged.", status,
+                )
                 self._pause("outage", 60)
                 raise ProviderError("outage")
             try:

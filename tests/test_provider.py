@@ -123,6 +123,35 @@ class ProviderTests(unittest.IsolatedAsyncioTestCase):
             self.assertNotIn("secret-marker", combined)
             self.assertNotIn("fake-test-key", combined)
 
+    async def test_transport_hints_distinguish_failures_without_leaking_details(self):
+        cases = ((httpx.ReadTimeout, "timed out"), (TimeoutError, "timed out"),
+                 (httpx.ProxyError, "proxy connection failed"),
+                 (httpx.ConnectError, "network connection failed"))
+        for exception_type, hint in cases:
+            def handler(request):
+                raise exception_type("sensitive-exception-marker")
+            provider = self.make_provider(handler)
+            with self.assertLogs("orion", level="WARNING") as logs:
+                with self.assertRaises(ProviderError) as error:
+                    await provider.generate("s", "u")
+            self.assertEqual(error.exception.kind, "outage")
+            combined = " ".join(logs.output)
+            self.assertIn(hint, combined)
+            self.assertNotIn("sensitive-exception-marker", combined)
+            self.assertNotIn("fake-test-key", combined)
+
+    async def test_http_outage_diagnostic_reports_status_without_body(self):
+        for status in (302, 500, 502, 503, 504):
+            provider = self.make_provider(lambda request: httpx.Response(status, text="sensitive-response-marker"))
+            with self.assertLogs("orion", level="WARNING") as logs:
+                with self.assertRaises(ProviderError) as error:
+                    await provider.generate("s", "u")
+            self.assertEqual(error.exception.kind, "outage")
+            combined = " ".join(logs.output)
+            self.assertIn("HTTP " + str(status), combined)
+            self.assertNotIn("sensitive-response-marker", combined)
+            self.assertNotIn("fake-test-key", combined)
+
     async def test_malformed_bad_request_body_has_safe_generic_hint(self):
         for body in ([], {"error": []}, {"error": {"details": None}}):
             response = httpx.Response(400, json=body)

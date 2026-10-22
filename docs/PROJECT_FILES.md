@@ -651,7 +651,23 @@ class AIProvider:
             try:
                 async with asyncio.timeout(s.request_timeout_seconds):
                     response = await self.client.post(url, headers=headers, json=body)
-            except (TimeoutError, httpx.TimeoutException, httpx.TransportError):
+            except (TimeoutError, httpx.TimeoutException):
+                logging.getLogger("orion").warning(
+                    "AI request timed out (configured total limit: %s seconds). If this repeats, try request_timeout_seconds = 120 in settings.toml.",
+                    s.request_timeout_seconds,
+                )
+                self._pause("outage", 60)
+                raise ProviderError("outage") from None
+            except httpx.ProxyError:
+                logging.getLogger("orion").warning(
+                    "AI proxy connection failed. Check the configured proxy and its access to the AI provider; no proxy details were logged."
+                )
+                self._pause("outage", 60)
+                raise ProviderError("outage") from None
+            except httpx.TransportError:
+                logging.getLogger("orion").warning(
+                    "AI network connection failed. Check Internet, DNS, trusted certificates, firewall and proxy access; no exception details were logged."
+                )
                 self._pause("outage", 60)
                 raise ProviderError("outage") from None
             status = response.status_code
@@ -670,6 +686,9 @@ class AIProvider:
                 self._pause("configuration", 3600)
                 raise ProviderError("configuration")
             if not 200 <= status < 300:
+                logging.getLogger("orion").warning(
+                    "AI endpoint returned HTTP %s. Check provider status and network/proxy availability; no response body was logged.", status,
+                )
                 self._pause("outage", 60)
                 raise ProviderError("outage")
             try:
@@ -1250,6 +1269,35 @@ class ProviderTests(unittest.IsolatedAsyncioTestCase):
             combined = " ".join(logs.output)
             self.assertIn(hint, combined)
             self.assertNotIn("secret-marker", combined)
+            self.assertNotIn("fake-test-key", combined)
+
+    async def test_transport_hints_distinguish_failures_without_leaking_details(self):
+        cases = ((httpx.ReadTimeout, "timed out"), (TimeoutError, "timed out"),
+                 (httpx.ProxyError, "proxy connection failed"),
+                 (httpx.ConnectError, "network connection failed"))
+        for exception_type, hint in cases:
+            def handler(request):
+                raise exception_type("sensitive-exception-marker")
+            provider = self.make_provider(handler)
+            with self.assertLogs("orion", level="WARNING") as logs:
+                with self.assertRaises(ProviderError) as error:
+                    await provider.generate("s", "u")
+            self.assertEqual(error.exception.kind, "outage")
+            combined = " ".join(logs.output)
+            self.assertIn(hint, combined)
+            self.assertNotIn("sensitive-exception-marker", combined)
+            self.assertNotIn("fake-test-key", combined)
+
+    async def test_http_outage_diagnostic_reports_status_without_body(self):
+        for status in (302, 500, 502, 503, 504):
+            provider = self.make_provider(lambda request: httpx.Response(status, text="sensitive-response-marker"))
+            with self.assertLogs("orion", level="WARNING") as logs:
+                with self.assertRaises(ProviderError) as error:
+                    await provider.generate("s", "u")
+            self.assertEqual(error.exception.kind, "outage")
+            combined = " ".join(logs.output)
+            self.assertIn("HTTP " + str(status), combined)
+            self.assertNotIn("sensitive-response-marker", combined)
             self.assertNotIn("fake-test-key", combined)
 
     async def test_malformed_bad_request_body_has_safe_generic_hint(self):
@@ -1952,7 +2000,7 @@ You do not need to deliberately break real keys, exhaust your account's quota, o
 | `configuration` | Verify exact model name, API availability, endpoint format and support for the model's generation options. A missing model or unsupported thinking option needs a configuration/provider update. No weaker model is auto-selected. |
 | `400 Bad Request` | This is a rejected request, not a quota response. Update Orion: it no longer guesses `thinkingLevel="minimal"` support from a Gemini model's name. Run `--check-ai` after restarting; the updated adapter prints fixed, credential-safe hints for recognized key, region, account, thinking and output-token errors. It never prints Google's raw error body. If the hint is generic, share the detailed AI Studio error with credentials and personal content removed. A 400 alone does not establish the cause. Restart after correcting the issue to clear Orion's one-hour pause. |
 | `quota` | Check AI Studio usage limits and free allocation. Wait for the documented account-specific reset. Local notices are throttled; repeated mentions do not clear the pause. |
-| `outage` | Check Internet/proxy/firewall and service status; requests time out after the configured total deadline. Wait at least 60 seconds. Do not disable TLS verification. |
+| `outage` | The updated adapter prints a safe preceding warning distinguishing a timeout, proxy failure, general network/TLS failure, or the exact unsuccessful HTTP status. An immediate error does not establish a timeout or a provider-wide outage. For HTTP 5xx, check provider status and retry later. For network/proxy errors, check the indicated connection prerequisites. Only if it actually reports a timeout, try `request_timeout_seconds = 120` and restart. A request can time out before the total deadline due to transport limits. Requests pause for 60 seconds after failure. Do not disable TLS verification. |
 | `empty` | Provider returned no usable text or an unexpected response shape; it could have hit a token/thinking limit. Check the model's current output settings and diagnostics before changing the token cap. |
 | One odd response is suppressed | Conservative identity/keyword checks can reject innocent phrasing. Review harmless regression cases; do not disable all moderation to make a single response pass. |
 | No message even for an error | Cooldown/notice suppression, missing send permissions, or custom filters prohibiting the fallback can intentionally cause silence. |
@@ -1990,7 +2038,7 @@ Executed on 22 October 2026 in the supplied Linux cloud workspace, using Python 
 - Created the repository-local `.venv` and installed pinned packages from PyPI with TLS verification enabled.
 - Re-ran installation from `requirements.lock`; every required version was already installed. Dependency checking reported `No broken requirements found.`
 - Executed the complete reusable cloud install script, including the real automated test command.
-- `python -m unittest discover -s tests -q`: **67 tests passed** after the Gemini request compatibility and diagnostic update (the initial project had 64). This includes all emoji sequences in the installed emoji database in one test, common emoticons, moderation normalization, identity, safe sending, triggers, references, context expiry/reset, cooldowns, provider payloads, malformed/empty output, timeout, authentication errors, 429/quota pauses, and daily limits. New tests check that different Gemini model names do not inject guessed thinking settings, and that recognized 400 errors produce fixed diagnostic hints without logging keys or arbitrary provider text. Malformed error bodies use a safe generic hint. The cause of the operator's live 400 remains unconfirmed without its detailed error or a live retest.
+- `python -m unittest discover -s tests -q`: **69 tests passed** after the Gemini request compatibility and diagnostic updates (the initial project had 64). This includes all emoji sequences in the installed emoji database in one test, common emoticons, moderation normalization, identity, safe sending, triggers, references, context expiry/reset, cooldowns, provider payloads, malformed/empty output, timeout, authentication errors, 429/quota pauses, and daily limits. New tests check that different Gemini model names do not inject guessed thinking settings, and that recognized 400 errors produce fixed diagnostic hints without logging keys or arbitrary provider text. Malformed error bodies use a safe generic hint. Further tests distinguish timeout, proxy, network and HTTP-status outage hints while checking that exception/response contents and keys remain unlogged. The cause of the operator's live immediate outage remains unconfirmed until a retest supplies that diagnostic.
 - Instantiated the official `discord.Client` subclass and invoked its event handlers with simulated Discord messages. Verified reference fetching, mention removal, reply triggering, safe output, disallowed-channel silence, bot-loop prevention, minimum intents, disabled message cache, and cleanup-task lifecycle.
 - Ran `main.py --config /tmp/orion-smoke.toml --check-config` with a temporary configuration containing harmless synthetic server/channel IDs. It printed `Configuration OK. Allowlists and output rules loaded. Credentials not tested.` No real channel was accessed.
 - Confirmed shipped empty allowlists fail closed with a local configuration error. No user's real IDs were guessed or written into settings.
