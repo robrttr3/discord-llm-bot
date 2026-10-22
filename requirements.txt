@@ -1,0 +1,5 @@
+discord.py==2.7.1
+httpx==0.28.1
+python-dotenv==1.2.4
+emoji==2.16.0
+regex==2026.9.29

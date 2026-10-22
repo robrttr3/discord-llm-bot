@@ -1,0 +1,33 @@
+# IDs are numbers, without quotation marks. Empty lists DENY ALL access.
+allowed_guild_ids = []
+allowed_channel_ids = []
+reply_to_mentions = true
+reply_to_replies = true
+
+# Keep provider="gemini" for the recommended setup.
+# Alternatives: "openai" (OpenAI-compatible API), "ollama" (local server).
+provider = "gemini"
+model = "gemini-3.8-flash"
+# Only used by provider="openai" or "ollama". No credentials in this URL.
+base_url = "https://api.groq.com/openai/v1"
+
+personality = "Be casual, thoughtful, direct, and natural. Match the conversation. Avoid stock greetings, repetitive disclaimers, and customer-service language."
+history_messages = 8
+history_ttl_seconds = 600
+history_characters = 6000
+input_characters = 3000
+max_response_characters = 1800
+max_output_tokens = 1024
+request_timeout_seconds = 40
+user_cooldown_seconds = 15
+channel_cooldown_seconds = 8
+outage_notice_seconds = 120
+daily_request_limit = 100
+max_active_channels = 100
+
+[moderation]
+# Built-in encoded terms cover common racial slurs without displaying them.
+# Add your own literal words privately here. Examples deliberately use harmless
+# placeholders; add "blockedexample" temporarily to test the filter.
+extra_blocked_terms = []
+use_builtin_terms = true

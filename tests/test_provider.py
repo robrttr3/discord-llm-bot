@@ -1,0 +1,119 @@
+from dataclasses import replace
+from datetime import date
+import json
+import unittest
+
+import httpx
+
+from ai_provider import AIProvider, ProviderError
+from config import Settings
+
+
+class ProviderTests(unittest.IsolatedAsyncioTestCase):
+    def make_provider(self, handler, settings=None):
+        self.now = [100.0]
+        self.today = [date(2026, 10, 22)]
+        client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        provider = AIProvider(settings or Settings(), "fake-test-key", client,
+                              clock=lambda: self.now[0], day=lambda: self.today[0])
+        self.addAsyncCleanup(provider.close)
+        return provider
+
+    async def test_gemini_request_and_thought_exclusion(self):
+        def handler(request):
+            body = json.loads(request.content)
+            self.assertEqual(request.headers["x-goog-api-key"], "fake-test-key")
+            self.assertNotIn("key=", str(request.url))
+            self.assertIn("gemini-3.8-flash:generateContent", str(request.url))
+            self.assertEqual(body["systemInstruction"]["parts"][0]["text"], "trusted")
+            self.assertEqual(body["contents"][0]["role"], "user")
+            self.assertEqual(len(body["safetySettings"]), 2)
+            return httpx.Response(200, json={"candidates": [{"content": {"parts": [
+                {"thought": True, "text": "private reasoning"}, {"text": "Hello there."}]}}]})
+        provider = self.make_provider(handler)
+        self.assertEqual(await provider.generate("trusted", "untrusted"), "Hello there.")
+        self.assertEqual(provider.requests_today, 1)
+
+    async def test_openai_compatible(self):
+        def handler(request):
+            self.assertTrue(str(request.url).endswith("/chat/completions"))
+            self.assertEqual(json.loads(request.content)["model"], "openai/gpt-oss-120b")
+            return httpx.Response(200, json={"choices": [{"message": {"content": "Hello."}}]})
+        provider = self.make_provider(handler, replace(Settings(), provider="openai", model="openai/gpt-oss-120b"))
+        self.assertEqual(await provider.generate("s", "u"), "Hello.")
+
+    async def test_ollama_no_key_transmitted(self):
+        def handler(request):
+            self.assertNotIn("authorization", request.headers)
+            self.assertNotIn("x-goog-api-key", request.headers)
+            self.assertTrue(str(request.url).endswith("/api/chat"))
+            return httpx.Response(200, json={"message": {"content": "Hello."}})
+        provider = self.make_provider(handler, replace(Settings(), provider="ollama", base_url="http://127.0.0.1:11434"))
+        self.assertEqual(await provider.generate("s", "u"), "Hello.")
+
+    async def test_rate_limit_circuit_and_retry_after(self):
+        calls = []
+        def handler(request):
+            calls.append(request)
+            return httpx.Response(429, headers={"Retry-After": "120"}, json={"error": "not logged"})
+        provider = self.make_provider(handler)
+        for _ in range(3):
+            with self.assertRaises(ProviderError) as error:
+                await provider.generate("s", "u")
+            self.assertEqual(error.exception.kind, "quota")
+        self.assertEqual(len(calls), 1)
+        self.now[0] += 121
+        with self.assertRaises(ProviderError):
+            await provider.generate("s", "u")
+        self.assertEqual(len(calls), 2)
+
+    async def test_error_statuses_stop_repeated_requests(self):
+        for status, expected in ((401, "auth"), (403, "auth"), (404, "configuration"),
+                                 (400, "configuration"), (500, "outage"), (302, "outage")):
+            calls = []
+            def handler(request):
+                calls.append(request)
+                return httpx.Response(status, text="potentially sensitive response")
+            provider = self.make_provider(handler)
+            for _ in range(2):
+                with self.assertRaises(ProviderError) as error:
+                    await provider.generate("s", "u")
+                self.assertEqual(str(error.exception), expected)
+            self.assertEqual(len(calls), 1)
+
+    async def test_timeout_opens_circuit(self):
+        calls = []
+        def handler(request):
+            calls.append(request)
+            raise httpx.ReadTimeout("not logged", request=request)
+        provider = self.make_provider(handler)
+        for _ in range(2):
+            with self.assertRaises(ProviderError) as error:
+                await provider.generate("s", "u")
+            self.assertEqual(error.exception.kind, "outage")
+        self.assertEqual(len(calls), 1)
+
+    async def test_daily_limit_and_next_day(self):
+        def handler(request):
+            return httpx.Response(200, json={"candidates": [{"content": {"parts": [{"text": "Hi"}]}}]})
+        provider = self.make_provider(handler, replace(Settings(), daily_request_limit=1))
+        await provider.generate("s", "u")
+        with self.assertRaises(ProviderError) as error:
+            await provider.generate("s", "u")
+        self.assertEqual(error.exception.kind, "quota")
+        self.today[0] = date(2026, 10, 23)
+        self.assertEqual(await provider.generate("s", "u"), "Hi")
+
+    async def test_safety_refusal_does_not_disclose_body(self):
+        provider = self.make_provider(lambda request: httpx.Response(200, json={
+            "promptFeedback": {"blockReason": "SAFETY"}}))
+        with self.assertRaises(ProviderError) as error:
+            await provider.generate("s", "u")
+        self.assertEqual(str(error.exception), "safety")
+
+    async def test_empty_and_malformed_responses(self):
+        for value in ({}, {"candidates": []}, {"candidates": [{"content": {"parts": [{"text": ""}]}}]}, []):
+            provider = self.make_provider(lambda request: httpx.Response(200, json=value))
+            with self.assertRaises(ProviderError) as error:
+                await provider.generate("s", "u")
+            self.assertEqual(error.exception.kind, "empty")
