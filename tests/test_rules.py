@@ -65,8 +65,23 @@ class RuleTests(unittest.TestCase):
     def test_punctuation_and_digits_preserved(self):
         for text in ("2 + 2 = 4. #topic *words*", "Use https://example.com/test.",
                      "C++ and C# are languages.", "A normal hyphen - stays.",
-                     "普通文字（你好）", "The expression (x^2) is valid."):
+                     "The expression (x^2) is valid."):
             self.assertEqual(validate_output(text, self.moderator), text)
+
+    def test_non_english_output_is_rejected(self):
+        samples = (
+            "Esta es una respuesta completamente en español.",
+            "Ceci est une réponse entièrement en français.",
+            "Dies ist eine vollständig deutsche Antwort.",
+            "Acesta este un răspuns complet în limba română.",
+            "これは日本語の回答です。",
+            "这是中文回答。",
+            "Merci beaucoup.",
+            "This is an English sentence. Bonjour tout le monde.",
+        )
+        for text in samples:
+            with self.subTest(text=text):
+                self.assertIsNone(validate_output(text, self.moderator))
 
     def test_em_dash_replaced(self):
         self.assertEqual(validate_output("Hello\u2014there", self.moderator), "Hello, there")
@@ -77,12 +92,12 @@ class RuleTests(unittest.TestCase):
         self.assertEqual(validate_output("Hi\x00 there", self.moderator), "Hi there")
 
     def test_discord_length_and_idempotence(self):
-        value = validate_output("A" * 6000, self.moderator, 1800)
-        self.assertEqual(len(value), 1800)
-        self.assertTrue(value.endswith("..."))
+        value = validate_output("This is a complete English sentence. " * 300,
+                                self.moderator, 1800)
+        self.assertLessEqual(len(value), 1800)
+        self.assertTrue(value.endswith("sentence."))
         self.assertEqual(validate_output(value, self.moderator), value)
-        value = validate_output("\U00010400" * 2000, self.moderator, 1800)
-        self.assertLessEqual(len(value.encode("utf-16-le")), 3600)
+        self.assertIsNone(validate_output("\U00010400" * 2000, self.moderator, 1800))
 
     def test_truncation_drops_incomplete_trailing_sentence(self):
         text = "A complete first sentence. The Soviet response continued for much longer."

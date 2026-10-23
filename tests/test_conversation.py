@@ -47,6 +47,7 @@ class ConversationTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(await self.engine.handle(self.message()), "That makes sense.")
         self.assertEqual(len(self.provider.calls), 1)
         self.assertIn("within 1800 characters", self.provider.calls[0][0])
+        self.assertIn("Always reply only in English", self.provider.calls[0][0])
 
     async def test_reply_to_self_and_reference_context(self):
         reference = self.message("A prior point.", is_bot=True, is_self=True, mentioned=False)
@@ -144,6 +145,11 @@ class ConversationTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(await self.engine.handle(self.message()), "A neutral response.")
         self.assertEqual(len(self.provider.calls), 2)
         self.assertNotIn("blockedexample", self.provider.calls[1][0])
+
+    async def test_retry_non_english_once(self):
+        self.provider.outputs = ["Esta respuesta está en español.", "This response is in English."]
+        self.assertEqual(await self.engine.handle(self.message()), "This response is in English.")
+        self.assertEqual(len(self.provider.calls), 2)
 
     async def test_retry_identity_then_fallback(self):
         self.provider.outputs = ["I'm Vega.", "My creator is Alice."]

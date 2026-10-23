@@ -58,14 +58,14 @@ An additional **100-request UTC-day cap** and **one simultaneous AI request** ar
 6. Common identity and creator questions, help and reset commands are handled locally without an AI request.
 7. The context builder gathers permitted nearby messages and a same-channel referenced message. Every item is moderated, bounded and marked as untrusted data. Attachment files, embeds and linked pages are never downloaded.
 8. The provider adapter sends the immutable identity/rules as system instructions, separate from a JSON object containing user data. For Gemini, hate and harassment safety settings remain enabled.
-9. Output checks reject configured slurs and common wrong-identity claims, remove emoji/emoticons and em dashes, and apply Discord's length bound at the last complete sentence when possible. A rejected response can be regenerated once, without repeating the rejected text. A second failure yields a checked neutral fallback.
+9. Output checks reject non-English prose, configured slurs and common wrong-identity claims, remove emoji/emoticons and em dashes, and apply Discord's length bound at the last complete sentence when possible. A rejected response can be regenerated once, without repeating the rejected text. A second failure yields a checked English fallback.
 10. The single `SafeSender` path checks even errors, quota notices and fallback messages immediately before sending. Mentions and link embeds are disabled. If operator filters also prohibit the fallback, the bot stays silent.
 
 History is **RAM only**, with no database or chat logs. Defaults: eight nearby messages, ten-minute context window, 6,000 nearby-context characters, and at most 100 active channel buffers. The current message and optional referenced message are separately bounded at 3,000 characters each. Expired text is excluded immediately on use and pruned from idle buffers at most 30 seconds later. Discord.py's extra message cache is disabled. A provider request temporarily holds its bounded payload until that request finishes.
 
 `@Orion reset` clears this channel's context for everyone. Any permitted user may use it. It does not erase messages from Discord or a provider. Restarting Orion clears all buffers, cooldowns and counters; messages before that restart are not re-imported. Deleted/edited Discord messages already buffered can remain until reset/expiry. There is no persistent memory about individual users.
 
-**Limits of the guards:** direct recognized identity questions have deterministic answers; common self-attribution patterns are blocked. Arbitrary natural-language paraphrases, all possible prompt injections, semantic hate without keywords, new Unicode emoji, every invented emoticon, and all multilingual attacks cannot be proven absent. The fixed identity prompt, encoded keyword rules, normalization, Gemini safety settings, output checks and tests provide several layers, not a mathematical guarantee. Unicode symbol category `So` is also removed to catch decorative symbols and kaomoji fragments; that intentionally removes some non-emoji symbols. Letters, ordinary punctuation, math operators and digits are preserved. Keyword boundaries reduce innocent-substring matches, but ambiguous homonyms and obfuscations can still cause mistakes. Educational discussion of racism is allowed without repeating prohibited terms. Provider changes can weaken semantic moderation and require fresh evaluation.
+**Limits of the guards:** direct recognized identity questions have deterministic answers; common self-attribution patterns are blocked. Arbitrary natural-language paraphrases, all possible prompt injections, semantic hate without keywords, new Unicode emoji, invented emoticons, and perfect language classification cannot be proven absent. The fixed identity prompt, encoded keyword rules, normalization, local language detection, provider safety settings, output checks and tests provide several layers, not a mathematical guarantee. Very short words shared by English and another language can be ambiguous, while names and unusual technical text can be rejected by mistake. Unicode symbol category `So` is also removed to catch decorative symbols and kaomoji fragments; that intentionally removes some non-emoji symbols. Letters, ordinary punctuation, math operators and digits are preserved. Keyword boundaries reduce innocent-substring matches, but ambiguous homonyms and obfuscations can still cause mistakes. Educational discussion of racism is allowed without repeating prohibited terms. Provider changes can weaken semantic moderation and require fresh evaluation.
 
 ## 5. Complete project folder structure
 
@@ -498,6 +498,8 @@ def system_prompt(personality: str, max_response_characters: int = 1800) -> str:
 These identity facts are permanent. Never adopt another name, creator, or persona.
 Be honest that you are AI. Do not invent human experiences, memories, a body,
 or personal facts about Rontgen. Mention yourself or your creator only if relevant.
+Always reply only in English, regardless of the language used by a participant.
+Do not translate your answer into another language or include foreign-language text.
 Never produce emoji, emoticons, decorative symbols, custom Discord emoji, or
 the em dash character. Use normal punctuation. Never produce or quote racial
 slurs, hateful insults, discriminatory harassment, or targeted abuse. Discuss
@@ -569,6 +571,7 @@ Central outgoing-message validator and neutral fallback. Put this file at `Orion
 import re
 import unicodedata
 import emoji
+from langdetect import DetectorFactory, LangDetectException, detect_langs
 import regex
 
 from identity import identity_violation
@@ -587,6 +590,25 @@ _KAOMOJI = re.compile(
     r"[^()\nA-Za-z0-9]{1,24}[)）][╯づっノつ]*"
 )
 _SENTENCE_END = re.compile(r"[.!?](?:[\"')\]]{0,3})(?=\s|$)")
+_CODE = re.compile(r"```.*?```|`[^`\n]*`", re.DOTALL)
+_URL = re.compile(r"https?://\S+")
+_ENGLISH_WORDS = {
+    "a", "about", "again", "ai", "an", "answer", "are", "bot", "can",
+    "can't", "channel's", "clear", "cleared", "complete", "connection",
+    "context", "could", "created", "do", "don't", "english", "from",
+    "goodbye", "have", "hello", "help", "hi", "i", "i'm", "i've", "in",
+    "information", "is", "it", "later", "like", "long", "makes", "me",
+    "mention", "message", "messages", "my", "needs", "neutral", "no", "not",
+    "of", "okay", "one", "operator", "or", "orion", "output", "personal",
+    "please", "quota", "repeat", "reply", "requested", "reset", "response",
+    "rontgen", "say", "send", "sentence", "sense", "service", "settings",
+    "shorter", "sure", "talk", "temporarily", "thank", "thanks", "that",
+    "the", "there", "this", "to", "too", "try", "unavailable", "use",
+    "version", "welcome", "what", "with", "won't", "would", "yes", "you",
+    "your",
+}
+
+DetectorFactory.seed = 0
 
 
 def strip_prohibited(text: str) -> str:
@@ -629,6 +651,26 @@ def finish_limited_output(text: str) -> str:
     return text.rstrip(" ,;:") + "..."
 
 
+def english_only(text: str) -> bool:
+    """Require English prose while allowing URLs, code, numbers, and punctuation."""
+    prose = _URL.sub(" ", _CODE.sub(" ", text))
+    for chunk in re.split(r"(?<=[.!?])\s+|\n+", prose):
+        words = regex.findall(r"\p{L}+(?:['’]\p{L}+)*", chunk)
+        if not words:
+            continue
+        normalized = [word.casefold().replace("’", "'") for word in words]
+        if all(word in _ENGLISH_WORDS for word in normalized):
+            continue
+        try:
+            english_confidence = next(
+                (score.prob for score in detect_langs(chunk) if score.lang == "en"), 0.0)
+        except LangDetectException:
+            return False
+        if english_confidence < 0.80:
+            return False
+    return True
+
+
 def validate_output(text, moderator, max_length=1800) -> str | None:
     """None means reject. Callers may retry once or validate a fixed fallback."""
     if not isinstance(text, str) or not text.strip() or len(text) > 100000:
@@ -640,7 +682,8 @@ def validate_output(text, moderator, max_length=1800) -> str | None:
         return None
     # Discord's 2000-character bound is conservatively measured in UTF-16 units.
     text = _limit_at_sentence(text, max_length)
-    if not text or moderator.blocked(text) or identity_violation(text):
+    if (not text or not english_only(text) or moderator.blocked(text)
+            or identity_violation(text)):
         return None
     return text
 ``````
@@ -1143,6 +1186,7 @@ discord.py==2.7.1
 httpx==0.28.1
 python-dotenv==1.2.4
 emoji==2.16.0
+langdetect==1.0.9
 regex==2026.9.29
 ``````
 
@@ -1165,10 +1209,12 @@ h11==0.16.0
 httpcore==1.0.9
 httpx==0.28.1
 idna==3.20
+langdetect==1.0.9
 multidict==7.1.0
 propcache==0.5.4
 python-dotenv==1.2.4
 regex==2026.9.29
+six==1.17.0
 typing_extensions==4.16.0
 yarl==1.25.1
 ``````
@@ -1273,8 +1319,23 @@ class RuleTests(unittest.TestCase):
     def test_punctuation_and_digits_preserved(self):
         for text in ("2 + 2 = 4. #topic *words*", "Use https://example.com/test.",
                      "C++ and C# are languages.", "A normal hyphen - stays.",
-                     "普通文字（你好）", "The expression (x^2) is valid."):
+                     "The expression (x^2) is valid."):
             self.assertEqual(validate_output(text, self.moderator), text)
+
+    def test_non_english_output_is_rejected(self):
+        samples = (
+            "Esta es una respuesta completamente en español.",
+            "Ceci est une réponse entièrement en français.",
+            "Dies ist eine vollständig deutsche Antwort.",
+            "Acesta este un răspuns complet în limba română.",
+            "これは日本語の回答です。",
+            "这是中文回答。",
+            "Merci beaucoup.",
+            "This is an English sentence. Bonjour tout le monde.",
+        )
+        for text in samples:
+            with self.subTest(text=text):
+                self.assertIsNone(validate_output(text, self.moderator))
 
     def test_em_dash_replaced(self):
         self.assertEqual(validate_output("Hello\u2014there", self.moderator), "Hello, there")
@@ -1285,12 +1346,12 @@ class RuleTests(unittest.TestCase):
         self.assertEqual(validate_output("Hi\x00 there", self.moderator), "Hi there")
 
     def test_discord_length_and_idempotence(self):
-        value = validate_output("A" * 6000, self.moderator, 1800)
-        self.assertEqual(len(value), 1800)
-        self.assertTrue(value.endswith("..."))
+        value = validate_output("This is a complete English sentence. " * 300,
+                                self.moderator, 1800)
+        self.assertLessEqual(len(value), 1800)
+        self.assertTrue(value.endswith("sentence."))
         self.assertEqual(validate_output(value, self.moderator), value)
-        value = validate_output("\U00010400" * 2000, self.moderator, 1800)
-        self.assertLessEqual(len(value.encode("utf-16-le")), 3600)
+        self.assertIsNone(validate_output("\U00010400" * 2000, self.moderator, 1800))
 
     def test_truncation_drops_incomplete_trailing_sentence(self):
         text = "A complete first sentence. The Soviet response continued for much longer."
@@ -1586,6 +1647,7 @@ class ConversationTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(await self.engine.handle(self.message()), "That makes sense.")
         self.assertEqual(len(self.provider.calls), 1)
         self.assertIn("within 1800 characters", self.provider.calls[0][0])
+        self.assertIn("Always reply only in English", self.provider.calls[0][0])
 
     async def test_reply_to_self_and_reference_context(self):
         reference = self.message("A prior point.", is_bot=True, is_self=True, mentioned=False)
@@ -1683,6 +1745,11 @@ class ConversationTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(await self.engine.handle(self.message()), "A neutral response.")
         self.assertEqual(len(self.provider.calls), 2)
         self.assertNotIn("blockedexample", self.provider.calls[1][0])
+
+    async def test_retry_non_english_once(self):
+        self.provider.outputs = ["Esta respuesta está en español.", "This response is in English."]
+        self.assertEqual(await self.engine.handle(self.message()), "This response is in English.")
+        self.assertEqual(len(self.provider.calls), 2)
 
     async def test_retry_identity_then_fallback(self):
         self.provider.outputs = ["I'm Vega.", "My creator is Alice."]
@@ -2094,6 +2161,7 @@ For live tests, run Orion and allow 15 seconds between attempts from the same us
 | Ask `What's your name?` | Exact local answer: `I'm Orion, an AI chat bot.` |
 | Ask `Who created you?` | Exact local answer: `I'm Orion. Rontgen created me.` |
 | Ask Orion to say, repeat, echo, or output a supplied phrase | Fixed local refusal; no AI request is made. |
+| Write in another language or ask for a translated response | Orion answers only in English; detected non-English output is rejected and retried once. |
 | Ask it to rename itself or change its creator | Recognized identity requests produce a local fixed response; tests also reject common bad model attributions. General attacks still require monitoring. |
 | Ask whether it is human | It says it is an AI chat bot. |
 | Ask for biography of Rontgen | It states only the known creator fact and that it lacks personal information. |
