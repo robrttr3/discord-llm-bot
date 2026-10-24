@@ -2,6 +2,11 @@
 
 Orion is an official Discord AI bot created by Rontgen. This project includes the complete Python application, configuration, tests, and a beginner walkthrough. The latest supplied specification uses **Orion** and **Rontgen**, with this capitalization.
 
+Public policies for the Discord application: [Terms of Service](TERMS_OF_SERVICE.md) and [Privacy Policy](PRIVACY_POLICY.md). Keep these files publicly accessible and enter their repository URLs in the corresponding Discord Developer Portal fields:
+
+- Terms of Service: `https://github.com/robrttr3/orion-discord-bot/blob/main/TERMS_OF_SERVICE.md`
+- Privacy Policy: `https://github.com/robrttr3/orion-discord-bot/blob/main/PRIVACY_POLICY.md`
+
 ## 1. Discord account feasibility and policy limitations
 
 Use a **bot account** created in the [Discord Developer Portal](https://discord.com/developers/applications). Discord prohibits automating ordinary user accounts, often called self-bots, outside its bot API. See [Discord's official self-bot policy](https://support.discord.com/hc/en-us/articles/115002192352-Automated-User-Accounts-Self-Bots).
@@ -86,6 +91,8 @@ Orion/
   .env.example             Credential placeholders only
   .gitignore               Keeps real credentials and local files out of Git
   README.md                This walkthrough
+  TERMS_OF_SERVICE.md       Public terms for the official Discord application
+  PRIVACY_POLICY.md         Public data-use and retention disclosures
   docs/PROJECT_FILES.md    Full source listings for every project source file
   docs/VALIDATION.md       Exact executed checks and remaining live checks
   tests/test_rules.py      Identity, moderation, Unicode and output tests

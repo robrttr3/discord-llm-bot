@@ -1,6 +1,6 @@
 # Validation record
 
-Executed on 23 October 2026 in the supplied Linux cloud workspace, using Python 3.12.14. This is not a Windows validation or a live Discord/AI integration result.
+Executed on 24 October 2026 in the supplied Linux cloud workspace, using Python 3.12.14. This is not a Windows validation or a live Discord/AI integration result.
 
 ## Passed
 
@@ -8,6 +8,7 @@ Executed on 23 October 2026 in the supplied Linux cloud workspace, using Python 
 - Re-ran installation from `requirements.lock`; every required version was already installed. Dependency checking reported `No broken requirements found.`
 - Executed the complete reusable cloud install script, including the real automated test command.
 - `python -m unittest discover -s tests -q`: **76 tests passed** after English-only output enforcement was added (the initial project had 64). This includes all emoji sequences in the installed emoji database in one test, common emoticons, language detection, moderation normalization, identity, safe sending, triggers, references, context expiry/reset, cooldowns, provider payloads, malformed/empty output, sentence-aware truncation, timeout, authentication errors, 429/quota pauses, and daily limits. Language tests reject representative Spanish, French, German, Romanian, Japanese and Chinese output, including an English retry after a rejected response. Token-limit tests cover Gemini, OpenAI-compatible providers such as Groq, and Ollama. The forced-phrase tests cover common requests to say, repeat, echo, or dictate an exact response; normal discussion containing similar words; and refusal without an AI request. Provider tests check that different Gemini model names do not inject guessed thinking settings, and that recognized 400 errors produce fixed diagnostic hints without logging keys or arbitrary provider text. Malformed error bodies use a safe generic hint. Further tests distinguish timeout, proxy, network and HTTP-status outage hints while checking that exception/response contents and keys remain unlogged.
+- Created public Terms of Service and Privacy Policy documents tailored to the implemented Discord data flow. They cover user eligibility and conduct, AI limitations, message and identifier processing, AI-provider disclosures, retention and reset behavior, user controls, privacy rights, security, children, changes, and a contact path.
 - Instantiated the official `discord.Client` subclass and invoked its event handlers with simulated Discord messages. Verified reference fetching, mention removal, reply triggering, safe output, disallowed-channel silence, bot-loop prevention, minimum intents, disabled message cache, and cleanup-task lifecycle.
 - Ran `main.py --config /tmp/orion-smoke.toml --check-config` with a temporary configuration containing harmless synthetic server/channel IDs. It printed `Configuration OK. Allowlists and output rules loaded. Credentials not tested.` No real channel was accessed.
 - Confirmed shipped empty allowlists fail closed with a local configuration error. No user's real IDs were guessed or written into settings.
@@ -21,6 +22,7 @@ Executed on 23 October 2026 in the supplied Linux cloud workspace, using Python 
 - Exact current free allocation, payment/verification conditions, or regional provider data-use terms: official pricing/terms hosts were blocked by the network proxy. The default model name and API usage were verified against Google's official GitHub examples, not a live model request.
 - Free always-on hosting and uptime guarantees: not verified; no deployment performed.
 - Publication or restoration in a fresh cloud task: saving environment instructions does not publish or validate a restored snapshot.
+- Submission to and approval by Discord's app-verification review: not performed. Discord's hosted policy pages were blocked by this environment's network proxy during preparation, and final acceptance remains Discord's decision.
 - Absolute semantic identity/moderation correctness against all language, invented emoticons and future emoji: not claimed. See README limitations.
 
 The project is prepared for local development and offline tests. Live operation remains conditional on the operator's credentials, free-tier confirmation, allowlists, Message Content Intent, channel permissions and network access.

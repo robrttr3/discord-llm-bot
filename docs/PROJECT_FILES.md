@@ -1148,6 +1148,250 @@ __pycache__/
 dist/
 ``````
 
+### TERMS_OF_SERVICE.md
+
+Public terms governing the official Orion Discord application. Put this file at `Orion/TERMS_OF_SERVICE.md` and keep its repository URL publicly accessible.
+
+``````markdown
+# Orion Terms of Service
+
+**Effective date:** October 24, 2026
+
+**Last updated:** October 24, 2026
+
+These Terms of Service (the **Terms**) govern access to and use of the official Orion Discord application and bot (**Orion** or the **Service**) operated by Rontgen, GitHub user [robrttr3](https://github.com/robrttr3) (the **Operator**, **we**, **us**, or **our**).
+
+By installing, authorizing, accessing, or interacting with Orion, you agree to these Terms and to the [Orion Privacy Policy](PRIVACY_POLICY.md). If you do not agree, do not use Orion. Server owners and administrators who add Orion to a Discord server represent that they have authority to do so and accept these Terms for their use of the Service.
+
+## 1. Discord terms and eligibility
+
+You may use Orion only if you are permitted to use Discord under Discord's terms and the laws that apply to you. Your use of Discord remains governed by the [Discord Terms of Service](https://discord.com/terms), [Discord Community Guidelines](https://discord.com/guidelines), and other applicable Discord policies.
+
+If you add Orion to a server, you are responsible for obtaining any notices, permissions, or consents required for Orion to process messages in the channels where you enable it. You must configure channel access and permissions appropriately and tell affected members that selected message content can be sent to an AI provider.
+
+Orion is an independent application and is not endorsed by, sponsored by, or affiliated with Discord Inc.
+
+## 2. What Orion provides
+
+Orion provides automated, AI-generated conversational replies in configured Discord servers and channels. Orion may use a limited amount of recent channel context and a referenced message to prepare a reply. It also provides local commands and safeguards, including context reset, cooldowns, content filtering, English-only output checks, and response-length controls.
+
+Features, providers, models, limits, and availability may change. Orion is provided for general conversation and informational use. It is not an emergency service and is not a substitute for professional medical, legal, financial, safety, or other expert advice.
+
+## 3. Acceptable use
+
+You must not use Orion to:
+
+- violate any law, regulation, court order, Discord policy, or another person's rights;
+- harass, threaten, exploit, discriminate against, deceive, impersonate, or endanger another person;
+- generate, distribute, or facilitate unlawful, abusive, sexually exploitative, or otherwise prohibited material;
+- disclose personal, confidential, authentication, payment, health, or other sensitive information that you do not have authority to share;
+- spam, raid, disrupt, overload, reverse engineer, probe, bypass rate limits, evade safeguards, or interfere with Orion, Discord, an AI provider, or their infrastructure;
+- use automated means to scrape, archive, benchmark at abusive volume, or build a competing dataset from the Service;
+- misrepresent AI output as verified fact, professional advice, or a human statement; or
+- use Orion in a way that exposes the Operator, Discord, an AI provider, or another person to liability or security risk.
+
+The Operator may restrict or terminate access when reasonably necessary to protect users, enforce these Terms, satisfy Discord requirements, comply with law, or preserve the Service.
+
+## 4. Your content and permissions
+
+You retain any rights you have in content you submit through Discord. You grant the Operator a limited, non-exclusive, worldwide, royalty-free license to access, process, transmit, and temporarily reproduce that content only as needed to operate, secure, moderate, and troubleshoot Orion. This license ends when the content is no longer needed for those purposes, subject to processing and retention by Discord, the configured AI provider, and infrastructure providers under their own terms.
+
+You represent that you have the rights and permissions needed to submit your content. Do not submit another person's private information or copyrighted material unless you are authorized to do so.
+
+## 5. AI output
+
+AI output can be incomplete, inaccurate, outdated, biased, objectionable, or unsuitable for a particular purpose. Safeguards reduce some risks but cannot guarantee a correct or safe answer. You are responsible for reviewing output before relying on, sharing, or acting on it.
+
+Orion does not promise that output will be unique or that another user will not receive similar output. To the extent permitted by law, the Operator does not claim ownership of rights that may arise in output generated for you, but no representation is made that AI output is eligible for copyright or free of third-party rights.
+
+## 6. Third-party services
+
+Orion depends on Discord and may depend on a configured AI provider, hosting provider, network provider, and open-source software. Those services have their own terms and privacy practices. Their outages, policy changes, model behavior, quotas, or account restrictions can affect Orion. The Operator is not responsible for third-party services outside the Operator's control.
+
+## 7. Privacy
+
+The [Orion Privacy Policy](PRIVACY_POLICY.md) explains what data Orion processes, why it is processed, who receives it, how long it is retained, and how to make a privacy request. By using Orion, you acknowledge that selected message content may be processed by the configured AI provider as described there.
+
+## 8. Service changes, suspension, and termination
+
+The Operator may modify, limit, suspend, or discontinue all or part of Orion at any time. We may remove Orion from a server or block access for abuse, security concerns, legal requirements, Discord policy enforcement, or operational limits. You may stop using Orion at any time. A server administrator can remove the bot or revoke its permissions.
+
+Provisions that by their nature should survive termination, including intellectual-property, disclaimer, liability, and dispute provisions, will survive.
+
+## 9. Intellectual property
+
+Orion's name, branding, documentation, and software are protected by applicable intellectual-property laws. Third-party names and marks belong to their respective owners. Public access to source code does not grant rights beyond those expressly provided by an applicable license or by law.
+
+## 10. Disclaimers
+
+To the maximum extent permitted by law, Orion is provided **as is** and **as available**, without warranties of any kind, whether express, implied, or statutory. The Operator disclaims warranties of accuracy, reliability, availability, merchantability, fitness for a particular purpose, non-infringement, and that the Service will be uninterrupted, secure, or error-free.
+
+Some jurisdictions do not allow certain warranty exclusions, so some exclusions may not apply to you. Nothing in these Terms limits rights that cannot legally be waived.
+
+## 11. Limitation of liability
+
+To the maximum extent permitted by law, the Operator will not be liable for indirect, incidental, special, consequential, exemplary, or punitive damages, or for lost profits, data, goodwill, opportunities, or business interruption arising from Orion or these Terms. The Operator is not liable for decisions or actions taken in reliance on AI output or for conduct, content, or failures of Discord, an AI provider, or another third party.
+
+Where liability cannot be excluded, it is limited to the minimum amount permitted by applicable law. These limits do not apply where exclusion or limitation is prohibited.
+
+## 12. Changes to these Terms
+
+We may update these Terms to reflect changes to Orion, Discord requirements, providers, law, or security practices. The date at the top will be updated when changes are published. Material changes may also be announced through the repository, the Discord application profile, or an appropriate server notice. Continued use after an update takes effect constitutes acceptance where permitted by law.
+
+## 13. General terms
+
+If any provision is unenforceable, the remaining provisions remain effective. A failure to enforce a provision is not a waiver. You may not transfer your rights or obligations under these Terms without the Operator's consent. The Operator may transfer operation of Orion together with appropriate notice and continued protection of personal data.
+
+Applicable mandatory consumer and data-protection laws remain in effect. Any dispute should first be raised through the contact method below so the parties can attempt an informal resolution.
+
+## 14. Contact
+
+For questions about these Terms, open an issue in the [Orion support repository](https://github.com/robrttr3/orion-discord-bot/issues). Do not post bot tokens, API keys, private messages, or other sensitive information in a public issue.
+
+For a privacy request, open an issue titled **Privacy request** without including personal data. The Operator will provide next steps and may request reasonable identity or authorization verification through a non-public channel before acting on a request.
+``````
+
+### PRIVACY_POLICY.md
+
+Public disclosure of Orion's Discord data use, AI-provider sharing, retention, deletion, and user rights. Put this file at `Orion/PRIVACY_POLICY.md` and keep its repository URL publicly accessible.
+
+``````markdown
+# Orion Privacy Policy
+
+**Effective date:** October 24, 2026
+
+**Last updated:** October 24, 2026
+
+This Privacy Policy explains how the official Orion Discord application and bot (**Orion**) processes personal data. Orion is operated by Rontgen, GitHub user [robrttr3](https://github.com/robrttr3) (the **Operator**, **we**, **us**, or **our**).
+
+This policy applies to the official Orion application. A person who independently hosts, modifies, or operates a copy of Orion controls that deployment and must provide an accurate privacy policy for it.
+
+## 1. Scope and summary
+
+Orion processes limited Discord message and identifier data to decide whether to respond, build short-lived conversational context, prevent duplicate or excessive requests, moderate content, and obtain an AI-generated response. Orion does not maintain a user-profile database, sell personal data, serve advertising, or download attachments.
+
+The Operator does not use Discord messages to train or fine-tune an AI model. A hosted AI provider may process submitted text under that provider's own terms, privacy policy, account settings, and data controls.
+
+Selected message text can be sent to the AI provider configured for the deployment. Discord and that AI provider process data under their own privacy terms.
+
+## 2. Data Orion processes
+
+Depending on how Orion is configured and used, it processes:
+
+- **Discord identifiers:** server, channel, message, and user IDs needed for allowlists, routing, reply handling, deduplication, cooldowns, and context reset;
+- **message information:** message text, creation time, whether the author is a bot, whether Orion was mentioned, and whether the message replies to Orion;
+- **limited conversational context:** a bounded number of recent messages from an allowed channel and, when applicable, the same-channel message being replied to;
+- **configuration and operational state:** allowed server and channel IDs, cooldown timestamps, request counts, outage state, context reset timestamps, and configured model/provider information; and
+- **diagnostic categories:** locally authored status such as authentication, quota, configuration, timeout, or outage categories.
+
+Discord may deliver an event before Orion applies its allowlists. Orion immediately ignores messages outside configured servers and channels and does not add them to its context.
+
+Orion strips its own mention from the current message before processing. AI requests use generic speaker labels rather than deliberately adding Discord usernames or user IDs. Message text itself can still contain names, mentions, IDs, links, or other information supplied by participants.
+
+Orion does **not** intentionally:
+
+- access direct messages;
+- download or inspect attachment files, embeds, or linked pages;
+- collect payment data, address books, precise location, or Discord passwords;
+- log message content, usernames, API responses, bot tokens, or AI keys; or
+- create persistent behavioral or advertising profiles.
+
+Do not send secrets or sensitive personal data to Orion. If users place such data in a processed message, it may be included in temporary context and in an AI-provider request.
+
+## 3. How Orion uses data
+
+Orion uses the data described above to:
+
+- verify that a message comes from an allowed server and channel;
+- respond to a direct mention or a reply to Orion;
+- maintain limited short-term context so replies can remain relevant;
+- enforce cooldowns, deduplicate message events, limit requests, and prevent bot loops;
+- apply input and output moderation, language, identity, and length rules;
+- send a bounded prompt to the configured AI provider and deliver the checked response through Discord;
+- diagnose availability, authentication, quota, and configuration failures without recording message text; and
+- protect Orion, participants, Discord, and providers from abuse or security threats.
+
+Where a legal basis is required, processing is based on performance of the requested service, the Operator's legitimate interests in operating and securing Orion, consent where applicable, and compliance with legal obligations. Server owners and administrators are responsible for any additional notice or consent required for their community and configuration.
+
+## 4. When data is sent to an AI provider
+
+When an eligible message triggers an AI response, Orion sends the configured provider:
+
+- permanent system instructions;
+- the current message text;
+- an eligible same-channel referenced message, if present; and
+- bounded recent context from the allowed channel.
+
+The payload uses generic labels such as **participant** and **Orion** rather than deliberately including usernames or user IDs. Content written by users can nevertheless contain identifying information.
+
+The deployment may use [Google Gemini](https://policies.google.com/privacy), an OpenAI-compatible provider such as [Groq](https://console.groq.com/docs/your-data), or a local [Ollama](https://ollama.com/) instance. The active provider is selected by the Operator and is not changed automatically. Hosted providers receive the selected text over an encrypted connection and may process or retain it according to their own terms, account settings, and legal obligations. Local Ollama processing avoids a separate hosted AI recipient, but Discord still processes Discord messages.
+
+Before enabling Orion in a community, the server operator should identify the active provider and review that provider's current privacy and data-use terms.
+
+## 5. Other disclosures
+
+Personal data may also be processed or disclosed to:
+
+- **Discord**, which delivers and stores Discord messages and bot interactions under the [Discord Privacy Policy](https://discord.com/privacy);
+- **hosting and network providers**, to operate the process and transmit requests, subject to their own contracts and logs;
+- **service maintainers**, when necessary to investigate a security or reliability problem and only with access appropriate to that task; and
+- **authorities or other parties**, when reasonably necessary to comply with law, protect rights and safety, investigate abuse, or respond to valid legal process.
+
+Orion does not sell personal data, share it for cross-context behavioral advertising, or use it to build advertising profiles.
+
+## 6. Retention and deletion
+
+Orion is designed around volatile memory rather than a conversation database:
+
+- Message context is stored only in process memory. The default context window is 10 minutes and the configured maximum permitted by the application is 60 minutes. Expired messages are excluded when context is used and are pruned from inactive channel buffers. A restart clears all context.
+- A message edited or deleted in Discord can remain in Orion's in-memory context until reset, expiry, eviction, or restart because Discord changes are not used to rewrite an existing context buffer.
+- `@Orion reset` clears Orion's context for that channel in the running process. It does not delete Discord messages or data already sent to an AI provider.
+- Message IDs used for duplicate detection become ineffective after approximately one hour and are pruned during later traffic. Bounded user and channel identifiers, cooldown timestamps, counters, and reset markers remain only in process memory until eviction or restart.
+- An AI request temporarily holds its bounded payload until the request completes. The application does not write the payload to a database or application log.
+- Application logs contain status categories rather than message content, usernames, Discord IDs, credentials, or raw provider responses. A host may retain those status-only logs under its own operational policy.
+- Allowed server and channel IDs and other non-secret deployment settings remain in configuration until the Operator changes them.
+
+Discord and hosted AI providers control their own copies and retention. Orion's reset command and process restart cannot erase those third-party copies. Requests concerning data held by Discord or an AI provider may need to be directed to that service.
+
+## 7. Your choices and controls
+
+You can limit Orion's processing by not mentioning or replying to Orion and by avoiding messages in channels where Orion is configured to collect nearby context. You can ask a server administrator which channels are enabled, request that Orion's permissions be removed, or ask that the bot be removed from the server.
+
+Any permitted user can mention Orion and send `reset` to clear the current channel's in-memory conversation context. Because this affects the shared channel context, other participants should be considered before using it.
+
+Server administrators can restrict Orion to specific channels, disable its access to message history, remove the bot, or revoke its permissions. Disabling history access can reduce functionality but does not alter data already held by Discord or a provider.
+
+## 8. Privacy rights
+
+Depending on where you live, you may have rights to access, correct, delete, restrict, or object to processing of personal data, obtain a portable copy, withdraw consent, or complain to a data-protection authority. These rights can be subject to legal exceptions.
+
+Orion has no persistent user-profile or conversation database, so the Operator may have little or no stored data that can be linked to a requester. The Operator may request reasonable information to verify identity, server membership, authority, and the scope of a request. We will not ask for a password, bot token, or AI key.
+
+To begin a request, open an issue titled **Privacy request** in the [Orion support repository](https://github.com/robrttr3/orion-discord-bot/issues) without posting personal data or message content. The Operator will provide next steps and, when necessary, arrange a non-public method for verification. You may also contact Discord or the active AI provider directly regarding data they control.
+
+## 9. Security
+
+Orion uses bounded in-memory context, server and channel allowlists, encrypted provider connections, minimal Discord intents, credential separation, disabled message-content logging, rate limits, and output validation. No system can guarantee absolute security. Server administrators should grant only the permissions Orion needs, keep credentials secret, install updates, and promptly report suspected misuse.
+
+Do not put bot tokens, AI keys, private messages, or sensitive personal data in a public support issue. If a credential is exposed, revoke and replace it through the service that issued it.
+
+## 10. International processing
+
+Discord, an AI provider, and hosting or network providers may process data in countries other than your own. Those countries may have different data-protection laws. Where required, the responsible provider or Operator will rely on an applicable legal transfer mechanism. Review the active provider's policy for details about its locations and safeguards.
+
+## 11. Children
+
+Orion is not directed to children who are below the minimum age required to use Discord in their country. The Operator does not knowingly create profiles about children. If you believe a child has provided personal data contrary to applicable requirements, submit a privacy request so the matter can be reviewed.
+
+## 12. Changes to this policy
+
+We may update this policy to reflect changes to Orion, providers, Discord requirements, or law. The date at the top will be updated when changes are published. Material changes may also be announced through the repository, the Discord application profile, or an appropriate server notice.
+
+## 13. Contact
+
+For privacy questions or requests, open an issue titled **Privacy request** in the [Orion support repository](https://github.com/robrttr3/orion-discord-bot/issues) without including personal data. For general support, use the same issue tracker and do not post credentials or private message content.
+``````
+
 ### tests/test_rules.py
 
 Executed identity, moderation, Unicode, emoticon, and output tests. Put this file at `Orion/tests/test_rules.py`.
@@ -1901,6 +2145,11 @@ Complete numbered beginner tutorial, research, testing, and security guidance. P
 
 Orion is an official Discord AI bot created by Rontgen. This project includes the complete Python application, configuration, tests, and a beginner walkthrough. The latest supplied specification uses **Orion** and **Rontgen**, with this capitalization.
 
+Public policies for the Discord application: [Terms of Service](TERMS_OF_SERVICE.md) and [Privacy Policy](PRIVACY_POLICY.md). Keep these files publicly accessible and enter their repository URLs in the corresponding Discord Developer Portal fields:
+
+- Terms of Service: `https://github.com/robrttr3/orion-discord-bot/blob/main/TERMS_OF_SERVICE.md`
+- Privacy Policy: `https://github.com/robrttr3/orion-discord-bot/blob/main/PRIVACY_POLICY.md`
+
 ## 1. Discord account feasibility and policy limitations
 
 Use a **bot account** created in the [Discord Developer Portal](https://discord.com/developers/applications). Discord prohibits automating ordinary user accounts, often called self-bots, outside its bot API. See [Discord's official self-bot policy](https://support.discord.com/hc/en-us/articles/115002192352-Automated-User-Accounts-Self-Bots).
@@ -1985,6 +2234,8 @@ Orion/
   .env.example             Credential placeholders only
   .gitignore               Keeps real credentials and local files out of Git
   README.md                This walkthrough
+  TERMS_OF_SERVICE.md       Public terms for the official Discord application
+  PRIVACY_POLICY.md         Public data-use and retention disclosures
   docs/PROJECT_FILES.md    Full source listings for every project source file
   docs/VALIDATION.md       Exact executed checks and remaining live checks
   tests/test_rules.py      Identity, moderation, Unicode and output tests
@@ -2240,7 +2491,7 @@ Exact validation record, live limitations, and saved cloud configuration. Put th
 ``````markdown
 # Validation record
 
-Executed on 23 October 2026 in the supplied Linux cloud workspace, using Python 3.12.14. This is not a Windows validation or a live Discord/AI integration result.
+Executed on 24 October 2026 in the supplied Linux cloud workspace, using Python 3.12.14. This is not a Windows validation or a live Discord/AI integration result.
 
 ## Passed
 
@@ -2248,6 +2499,7 @@ Executed on 23 October 2026 in the supplied Linux cloud workspace, using Python 
 - Re-ran installation from `requirements.lock`; every required version was already installed. Dependency checking reported `No broken requirements found.`
 - Executed the complete reusable cloud install script, including the real automated test command.
 - `python -m unittest discover -s tests -q`: **76 tests passed** after English-only output enforcement was added (the initial project had 64). This includes all emoji sequences in the installed emoji database in one test, common emoticons, language detection, moderation normalization, identity, safe sending, triggers, references, context expiry/reset, cooldowns, provider payloads, malformed/empty output, sentence-aware truncation, timeout, authentication errors, 429/quota pauses, and daily limits. Language tests reject representative Spanish, French, German, Romanian, Japanese and Chinese output, including an English retry after a rejected response. Token-limit tests cover Gemini, OpenAI-compatible providers such as Groq, and Ollama. The forced-phrase tests cover common requests to say, repeat, echo, or dictate an exact response; normal discussion containing similar words; and refusal without an AI request. Provider tests check that different Gemini model names do not inject guessed thinking settings, and that recognized 400 errors produce fixed diagnostic hints without logging keys or arbitrary provider text. Malformed error bodies use a safe generic hint. Further tests distinguish timeout, proxy, network and HTTP-status outage hints while checking that exception/response contents and keys remain unlogged.
+- Created public Terms of Service and Privacy Policy documents tailored to the implemented Discord data flow. They cover user eligibility and conduct, AI limitations, message and identifier processing, AI-provider disclosures, retention and reset behavior, user controls, privacy rights, security, children, changes, and a contact path.
 - Instantiated the official `discord.Client` subclass and invoked its event handlers with simulated Discord messages. Verified reference fetching, mention removal, reply triggering, safe output, disallowed-channel silence, bot-loop prevention, minimum intents, disabled message cache, and cleanup-task lifecycle.
 - Ran `main.py --config /tmp/orion-smoke.toml --check-config` with a temporary configuration containing harmless synthetic server/channel IDs. It printed `Configuration OK. Allowlists and output rules loaded. Credentials not tested.` No real channel was accessed.
 - Confirmed shipped empty allowlists fail closed with a local configuration error. No user's real IDs were guessed or written into settings.
@@ -2261,6 +2513,7 @@ Executed on 23 October 2026 in the supplied Linux cloud workspace, using Python 
 - Exact current free allocation, payment/verification conditions, or regional provider data-use terms: official pricing/terms hosts were blocked by the network proxy. The default model name and API usage were verified against Google's official GitHub examples, not a live model request.
 - Free always-on hosting and uptime guarantees: not verified; no deployment performed.
 - Publication or restoration in a fresh cloud task: saving environment instructions does not publish or validate a restored snapshot.
+- Submission to and approval by Discord's app-verification review: not performed. Discord's hosted policy pages were blocked by this environment's network proxy during preparation, and final acceptance remains Discord's decision.
 - Absolute semantic identity/moderation correctness against all language, invented emoticons and future emoji: not claimed. See README limitations.
 
 The project is prepared for local development and offline tests. Live operation remains conditional on the operator's credentials, free-tier confirmation, allowlists, Message Content Intent, channel permissions and network access.
